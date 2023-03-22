@@ -4,6 +4,8 @@ It's a set of 4 Azure Functions that obtains, stores and allows retrieval of pos
 
 The test data returns 100 fake posts.
 
+It's demoware.
+
 ## Functions
 * GetPostsData
   * HTTP trigger
