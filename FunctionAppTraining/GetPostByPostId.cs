@@ -34,8 +34,7 @@ public static class GetPostByPostId
             return new NotFoundObjectResult("Require a querystring with id param");
         }
 
-        int parsedId;
-        if (! Int32.TryParse(queryId, out parsedId))
+        if (! Int32.TryParse(queryId, out var parsedId))
         {
             return new BadRequestObjectResult("Pass in an integer");
         }
@@ -46,7 +45,7 @@ public static class GetPostByPostId
         log.LogInformation($"Querying for {queryId}");
 
         QueryDefinition queryDefinition = new QueryDefinition(
-            "SELECT p.Title, p.id FROM p WHERE p.PostId = @postId").WithParameter("@postId", parsedId);
+            "SELECT * FROM p WHERE p.PostId = @postId").WithParameter("@postId", parsedId);
         
         log.LogInformation($"Query Definition: {queryDefinition.QueryText}");
         
@@ -56,7 +55,7 @@ public static class GetPostByPostId
             log.LogInformation($"Parameter: {name}, {value}");   
         }
 
-        using FeedIterator<CosmosPost> iterator = container.GetItemQueryIterator<CosmosPost>(queryDefinition);
+        using var iterator = container.GetItemQueryIterator<CosmosPost>(queryDefinition);
 
         List<CosmosPost> cosmosPosts = new List<CosmosPost>();
         while (iterator.HasMoreResults)
@@ -68,14 +67,10 @@ public static class GetPostByPostId
 
             foreach (var post in response)
             {
-
-                log.LogInformation($"ID: {post.Id}; PostId: {post.PostId}; UserId: {post.UserId}");
-                log.LogInformation($"Title: {post.Title}; Body: {post.Body}");
-
                 cosmosPosts.Add(post);                
             }
             
-            log.LogInformation($"How many posts in cosmosPosts? {cosmosPosts.Count()}");
+            log.LogInformation($"How many posts in cosmosPosts? {cosmosPosts.Count}");
         }
 
         if (cosmosPosts.Count >0)
