@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
@@ -29,7 +31,13 @@ public static class GetPostByPostId
 
         if (string.IsNullOrWhiteSpace(queryId))
         {
-            return new NotFoundResult();
+            return new NotFoundObjectResult("Require a querystring with id param");
+        }
+
+        int parsedId;
+        if (! Int32.TryParse(queryId, out parsedId))
+        {
+            return new BadRequestObjectResult("Pass in an integer");
         }
 
         Container container = client.GetDatabase("Stuff").GetContainer("posts");
@@ -38,7 +46,7 @@ public static class GetPostByPostId
         log.LogInformation($"Querying for {queryId}");
 
         QueryDefinition queryDefinition = new QueryDefinition(
-            "SELECT p.Title, p.id FROM p WHERE p.PostId = @postId").WithParameter("@postId", queryId);
+            "SELECT p.Title, p.id FROM p WHERE p.PostId = @postId").WithParameter("@postId", parsedId);
         
         log.LogInformation($"Query Definition: {queryDefinition.QueryText}");
         
@@ -54,28 +62,29 @@ public static class GetPostByPostId
         while (iterator.HasMoreResults)
         {
             log.LogInformation("iterator has results");
-            var response = await iterator.ReadNextAsync();
+            FeedResponse<CosmosPost> response = await iterator.ReadNextAsync();
             
             log.LogInformation($"StatusCode: {response.StatusCode}, Count: {response.Count}");
 
             foreach (var post in response)
             {
+
+                log.LogInformation($"ID: {post.Id}; PostId: {post.PostId}; UserId: {post.UserId}");
+                log.LogInformation($"Title: {post.Title}; Body: {post.Body}");
+
                 cosmosPosts.Add(post);                
             }
             
             log.LogInformation($"How many posts in cosmosPosts? {cosmosPosts.Count()}");
-            
-            // IEnumerable<CosmosPost> responseResource = response.Resource;
-            // log.LogInformation($"Count: {responseResource.Count()}");
-            // var post = response.First();
-            // log.LogInformation(post.Title);
-            cosmosPosts.Add(new CosmosPost(){Title="test"});
         }
 
-
-        // log.LogInformation($"Posts received: {posts.Count()}");
-        // var postsSerialised = JsonConvert.SerializeObject(posts);
-
-        return new OkObjectResult(cosmosPosts);
+        if (cosmosPosts.Count >0)
+        {
+            return new OkObjectResult(cosmosPosts);
+        }
+        else
+        {
+            return new NotFoundObjectResult("Not found");
+        }
     }
 }
